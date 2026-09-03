@@ -1,12 +1,13 @@
 ﻿const express = require('express');
 const cors = require('cors');
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
+
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const db = new sqlite3.Database('./notes.db');
+const db = new Database('notes.db');
 
 db.run(`
   CREATE TABLE IF NOT EXISTS notes (
