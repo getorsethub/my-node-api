@@ -1,57 +1,57 @@
-﻿const express = require('express');
+const express = require('express');
 const cors = require('cors');
 const Database = require('better-sqlite3');
 
-
 const app = express();
+const port = process.env.PORT || 3000;
+
 app.use(cors());
 app.use(express.json());
+app.use(express.static('.'));
 
+// Initialize Database
 const db = new Database('notes.db');
 
-db.run(`
+// Create Table
+db.exec(`
   CREATE TABLE IF NOT EXISTS notes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL
+    title TEXT NOT NULL,
+    content TEXT NOT NULL
   )
 `);
 
-// 1. READ: Fetch all notes
+// GET all notes
 app.get('/api/notes', (req, res) => {
-  db.all('SELECT * FROM notes', [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
+  const notes = db.prepare('SELECT * FROM notes').all();
+  res.json(notes);
 });
 
-// 2. CREATE: Add a note
+// POST a new note
 app.post('/api/notes', (req, res) => {
-  const { title } = req.body;
-  db.run('INSERT INTO notes (title) VALUES (?)', [title], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ id: this.lastID, title });
-  });
+  const { title, content } = req.body;
+  const stmt = db.prepare('INSERT INTO notes (title, content) VALUES (?, ?)');
+  const result = stmt.run(title, content);
+  res.json({ id: result.lastInsertRowid, title, content });
 });
 
-// 3. UPDATE: Edit a note by ID
+// PUT (Update) a note
 app.put('/api/notes/:id', (req, res) => {
   const { id } = req.params;
-  const { title } = req.body;
-  db.run('UPDATE notes SET title = ? WHERE id = ?', [title, id], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ message: 'Updated successfully' });
-  });
+  const { title, content } = req.body;
+  const stmt = db.prepare('UPDATE notes SET title = ?, content = ? WHERE id = ?');
+  stmt.run(title, content, id);
+  res.json({ id, title, content });
 });
 
-// 4. DELETE: Remove a note by ID
+// DELETE a note
 app.delete('/api/notes/:id', (req, res) => {
   const { id } = req.params;
-  db.run('DELETE FROM notes WHERE id = ?', [id], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ message: 'Deleted successfully' });
-  });
+  const stmt = db.prepare('DELETE FROM notes WHERE id = ?');
+  stmt.run(id);
+  res.json({ message: 'Deleted successfully' });
 });
 
-app.listen(3000, () => {
-  console.log('Node.js API + SQLite running at http://localhost:3000');
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });
